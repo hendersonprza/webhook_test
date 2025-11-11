@@ -1,12 +1,15 @@
-exports.handler = async (event) => {
+// ...existing code...
+exports.handler = async (event, context) => {
   const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 
   if (event.httpMethod === "GET") {
-    const mode = event.queryStringParameters["hub.mode"];
-    const token = event.queryStringParameters["hub.verify_token"];
-    const challenge = event.queryStringParameters["hub.challenge"];
+    const params = event.queryStringParameters || {};
+    const mode = params["hub.mode"];
+    const token = params["hub.verify_token"];
+    const challenge = params["hub.challenge"];
 
     if (mode === "subscribe" && token === VERIFY_TOKEN) {
+      console.log("WEBHOOK VERIFIED");
       return {
         statusCode: 200,
         body: challenge,
@@ -19,8 +22,28 @@ exports.handler = async (event) => {
     }
   }
 
+  if (event.httpMethod === "POST") {
+    let body;
+    try {
+      body = typeof event.body === "string" ? JSON.parse(event.body) : event.body;
+    } catch (err) {
+      console.warn("Failed to parse JSON body:", err);
+      body = event.body;
+    }
+
+    const timestamp = new Date().toISOString().replace("T", " ").slice(0, 19);
+    console.log(`\n\nWebhook received ${timestamp}\n`);
+    console.log(JSON.stringify(body, null, 2));
+
+    return {
+      statusCode: 200,
+      body: "OK",
+    };
+  }
+
   return {
-    statusCode: 404,
-    body: "Not Found",
+    statusCode: 405,
+    body: "Method Not Allowed",
   };
 };
+// ...existing code...
